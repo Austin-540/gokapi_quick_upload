@@ -15,6 +15,8 @@ import 'package:mime/mime.dart';
 void main() => runApp(MaterialApp(home: MyApp()));
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
   _MyAppState createState() => _MyAppState();
 }
@@ -32,19 +34,14 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _sharedFiles.clear();
         _sharedFiles.addAll(value);
-
-        print(_sharedFiles.map((f) => f.toMap()));
       });
-    }, onError: (err) {
-      print("getIntentDataStream error: $err");
-    });
+    }, onError: (err) {});
 
     // Get the media sharing coming from outside the app while the app is closed.
     ReceiveSharingIntent.instance.getInitialMedia().then((value) {
       setState(() {
         _sharedFiles.clear();
         _sharedFiles.addAll(value);
-        print(_sharedFiles.map((f) => f.toMap()));
 
         // Tell the library that we are done processing the intent.
         ReceiveSharingIntent.instance.reset();
@@ -52,7 +49,6 @@ class _MyAppState extends State<MyApp> {
     });
 
     getSetupData();
-
   }
 
   String? apiKey;
@@ -63,50 +59,66 @@ class _MyAppState extends State<MyApp> {
     FlutterSecureStorage storage = FlutterSecureStorage();
     apiKey = await storage.read(key: "api_key");
     gokapiUrl = await storage.read(key: "url");
-    setState(() {apiKey=apiKey;gokapiUrl=gokapiUrl;});
+    setState(() {
+      apiKey = apiKey;
+      gokapiUrl = gokapiUrl;
+    });
     if (apiKey == null || gokapiUrl == null) {
       if (!mounted) return;
-      print("Setup not completed!!! No API key or URL");
       return;
     }
 
-    if (_sharedFiles.isEmpty) {fileUploadStatus = uploadFiles([]);return "empty";}
+    if (_sharedFiles.isEmpty) {
+      fileUploadStatus = uploadFiles([]);
+      return "empty";
+    }
     fileUploadStatus = uploadFiles([File(_sharedFiles.last.path)]);
   }
 
   void editSavedData(String key) {
     String? newValue;
-    showDialog(context: context, builder: (context) => 
-    Dialog(child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-      Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: TextField(autocorrect: false, decoration: InputDecoration(hint: Text("Your $key goes here...")),
-        onChanged: (value) => newValue = value,),
-      ),
-      ElevatedButton(onPressed: () async {
-        if (key == "url") {
-          setState(() {
-            gokapiUrl = newValue;
-          });
-        } else if (key == "api_key") {
-          setState(() {
-            apiKey = newValue;
-          });
-        }
-        FlutterSecureStorage storage = FlutterSecureStorage();
-        await storage.write(key: key, value: newValue);
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                autocorrect: false,
+                decoration: InputDecoration(
+                  hint: Text("Your $key goes here..."),
+                ),
+                onChanged: (value) => newValue = value,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (key == "url") {
+                  setState(() {
+                    gokapiUrl = newValue;
+                  });
+                } else if (key == "api_key") {
+                  setState(() {
+                    apiKey = newValue;
+                  });
+                }
+                FlutterSecureStorage storage = FlutterSecureStorage();
+                await storage.write(key: key, value: newValue);
 
-        if (!context.mounted) return;
-        Navigator.pop(context);
-      }, child: Text("Update $key"))
-    ],),
-    ));
+                if (!context.mounted) return;
+                Navigator.pop(context);
+              },
+              child: Text("Update $key"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future uploadFiles(List<File> l) async {
-    print("Starting an upload!!\n\n");
     if (l.isEmpty) return "No file selected...";
 
     String? respBody;
@@ -114,29 +126,41 @@ class _MyAppState extends State<MyApp> {
       final uri = Uri.parse('$gokapiUrl/api/files/add');
       final request = http.MultipartRequest('POST', uri);
 
-        final stream = http.ByteStream(file.openRead());
-  final length = await file.length();
-  final multipartFile = http.MultipartFile(
-    'file', // field name
-    stream,
-    length,
-    filename: file.path.split('/').last,
-    contentType: MediaType.parse(lookupMimeType(file.path)!)
-  );
-  request.files.add(multipartFile);
+      final stream = http.ByteStream(file.openRead());
+      final length = await file.length();
+      final multipartFile = http.MultipartFile(
+        'file', // field name
+        stream,
+        length,
+        filename: file.path.split('/').last,
+        contentType: MediaType.parse(lookupMimeType(file.path)!),
+      );
+      request.files.add(multipartFile);
 
-  request.fields['allowedDownloads'] = "0";
-  request.fields['expiryDays'] = "0";
-  request.headers['apikey'] = apiKey!; //This function will run after the check
+      request.fields['allowedDownloads'] = "0";
+      request.fields['expiryDays'] = "0";
+      request.headers['apikey'] =
+          apiKey!; //This function will run after the check
 
-  final response = await request.send();
-  respBody = await response.stream.bytesToString();
+      final response = await request.send();
+      respBody = await response.stream.bytesToString();
     }
 
     try {
-      SharePlus.instance.share(ShareParams(uri: Uri.parse(jsonDecode(respBody!)["FileInfo"]["UrlHotlink"])));
+      SharePlus.instance.share(
+        ShareParams(
+          uri: Uri.parse(jsonDecode(respBody!)["FileInfo"]["UrlHotlink"]),
+        ),
+      );
     } catch (e) {
-      print(e.toString());
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Something went wrong :/"),
+          content: Text(e.toString()),
+        ),
+      );
     }
 
     return respBody; //always returns the final file...
@@ -145,15 +169,14 @@ class _MyAppState extends State<MyApp> {
   void selectNewFile() async {
     FilePickerResult? result = await FilePicker.pickFiles();
 
-if (result != null) {
-  File newFile = File(result.files.single.path!);
-  setState(() {
-  fileUploadStatus = uploadFiles([newFile]);
-  });
-} else {return;}
-    
-
-
+    if (result != null) {
+      File newFile = File(result.files.single.path!);
+      setState(() {
+        fileUploadStatus = uploadFiles([newFile]);
+      });
+    } else {
+      return;
+    }
   }
 
   @override
@@ -164,36 +187,42 @@ if (result != null) {
 
   @override
   Widget build(BuildContext context) {
-    const textStyleBold = const TextStyle(fontWeight: FontWeight.bold);
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Gokapi Quick Upload'),
-        ),
-        body: Center(
-          child: Column(
-            children: <Widget>[
-              ElevatedButton(onPressed: () => editSavedData("url"), child: Text("Gokapi URL: ${gokapiUrl.toString()}")),
-              ElevatedButton(onPressed: () => editSavedData("api_key"), child: Text("API Key: ${apiKey.toString()}")),
-              FutureBuilder(
-                future: fileUploadStatus, 
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  if (snapshot.hasData) {
-                    return Column(
-                      children: [
-                        Text(snapshot.data.toString()),
-                        OutlinedButton(onPressed: () => selectNewFile(), child: Text("Select a new file"))
-                      ],
-                    );
-                  } else if (snapshot.hasError) {
-                    return Text(snapshot.error.toString());
-                  } else {
-                    return CircularProgressIndicator();
-                  }
+      appBar: AppBar(title: const Text('Gokapi Quick Upload')),
+      body: Center(
+        child: Column(
+          children: <Widget>[
+            ElevatedButton(
+              onPressed: () => editSavedData("url"),
+              child: Text("Gokapi URL: ${gokapiUrl.toString()}"),
+            ),
+            ElevatedButton(
+              onPressed: () => editSavedData("api_key"),
+              child: Text("API Key: ${apiKey.toString()}"),
+            ),
+            FutureBuilder(
+              future: fileUploadStatus,
+              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                if (snapshot.hasData) {
+                  return Column(
+                    children: [
+                      Text(snapshot.data.toString()),
+                      OutlinedButton(
+                        onPressed: () => selectNewFile(),
+                        child: Text("Select a new file"),
+                      ),
+                    ],
+                  );
+                } else if (snapshot.hasError) {
+                  return Text(snapshot.error.toString());
+                } else {
+                  return CircularProgressIndicator();
                 }
-                )
-            ],
-          ),
+              },
+            ),
+          ],
         ),
+      ),
     );
   }
 }
