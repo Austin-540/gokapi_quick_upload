@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async';
@@ -7,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 void main() => runApp(MaterialApp(home: MyApp()));
 
@@ -130,6 +133,13 @@ class _MyAppState extends State<MyApp> {
   print(respBody);
   print("\n\n");
     }
+
+    try {
+      SharePlus.instance.share(ShareParams(uri: Uri.parse(jsonDecode(respBody!)["FileInfo"]["UrlHotlink"])));
+    } catch (e) {
+      print(e.toString());
+    }
+
     return respBody; //always returns the final file...
   }
 
