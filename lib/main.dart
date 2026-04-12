@@ -123,7 +123,7 @@ class _MyAppState extends State<MyApp> {
 
   request.fields['allowedDownloads'] = "0";
   request.fields['expiryDays'] = "0";
-  request.fields['apikey'] = apiKey!; //This function will run after the check
+  request.headers['apikey'] = apiKey!; //This function will run after the check
 
   final response = await request.send();
   respBody = await response.stream.bytesToString();
@@ -138,7 +138,9 @@ class _MyAppState extends State<MyApp> {
 
 if (result != null) {
   File newFile = File(result.files.single.path!);
+  setState(() {
   fileUploadStatus = uploadFiles([newFile]);
+  });
 } else {return;}
     
 
