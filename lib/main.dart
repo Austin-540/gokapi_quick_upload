@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async';
-
+import 'dart:io';
+import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() => runApp(MaterialApp(home: MyApp()));
 
@@ -44,10 +48,13 @@ class _MyAppState extends State<MyApp> {
     });
 
     getSetupData();
+
   }
 
   String? apiKey;
   String? gokapiUrl;
+  Future? fileUploadStatus;
+
   Future getSetupData() async {
     FlutterSecureStorage storage = FlutterSecureStorage();
     apiKey = await storage.read(key: "api_key");
@@ -56,7 +63,11 @@ class _MyAppState extends State<MyApp> {
     if (apiKey == null || gokapiUrl == null) {
       if (!mounted) return;
       print("Setup not completed!!! No API key or URL");
+      return;
     }
+
+    if (_sharedFiles.isEmpty) {fileUploadStatus = uploadFiles([]);return "empty";}
+    fileUploadStatus = uploadFiles([File(_sharedFiles.last.path)]);
   }
 
   void editSavedData(String key) {
@@ -90,6 +101,50 @@ class _MyAppState extends State<MyApp> {
     ));
   }
 
+  Future uploadFiles(List<File> l) async {
+    print("Starting an upload!!\n\n");
+    if (l.isEmpty) return "No file selected...";
+
+    String? respBody;
+    for (var file in l) {
+      final uri = Uri.parse('$gokapiUrl/api/files/add');
+      final request = http.MultipartRequest('POST', uri);
+
+        final stream = http.ByteStream(file.openRead());
+  final length = await file.length();
+  final multipartFile = http.MultipartFile(
+    'file', // field name
+    stream,
+    length,
+    filename: file.path.split('/').last,
+    contentType: MediaType('application', 'octet-stream'),
+  );
+  request.files.add(multipartFile);
+
+  request.fields['allowedDownloads'] = "0";
+  request.fields['expiryDays'] = "0";
+  request.fields['apikey'] = apiKey!; //This function will run after the check
+
+  final response = await request.send();
+  respBody = await response.stream.bytesToString();
+  print(respBody);
+  print("\n\n");
+    }
+    return respBody; //always returns the final file...
+  }
+
+  void selectNewFile() async {
+    FilePickerResult? result = await FilePicker.pickFiles();
+
+if (result != null) {
+  File newFile = File(result.files.single.path!);
+  fileUploadStatus = uploadFiles([newFile]);
+} else {return;}
+    
+
+
+  }
+
   @override
   void dispose() {
     _intentSub.cancel();
@@ -108,10 +163,23 @@ class _MyAppState extends State<MyApp> {
             children: <Widget>[
               ElevatedButton(onPressed: () => editSavedData("url"), child: Text("Gokapi URL: ${gokapiUrl.toString()}")),
               ElevatedButton(onPressed: () => editSavedData("api_key"), child: Text("API Key: ${apiKey.toString()}")),
-              Text("Shared files:", style: textStyleBold),
-              Text(_sharedFiles
-                      .map((f) => f.toMap())
-                      .join(",\n****************\n")),
+              FutureBuilder(
+                future: fileUploadStatus, 
+                builder: (BuildContext context, AsyncSnapshot snapshot) {
+                  if (snapshot.hasData) {
+                    return Column(
+                      children: [
+                        Text(snapshot.data.toString()),
+                        OutlinedButton(onPressed: () => selectNewFile(), child: Text("Select a new file"))
+                      ],
+                    );
+                  } else if (snapshot.hasError) {
+                    return Text(snapshot.error.toString());
+                  } else {
+                    return CircularProgressIndicator();
+                  }
+                }
+                )
             ],
           ),
         ),
