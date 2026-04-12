@@ -10,6 +10,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:mime/mime.dart';
 
 void main() => runApp(MaterialApp(home: MyApp()));
 
@@ -120,7 +121,7 @@ class _MyAppState extends State<MyApp> {
     stream,
     length,
     filename: file.path.split('/').last,
-    contentType: MediaType('application', 'octet-stream'),
+    contentType: MediaType.parse(lookupMimeType(file.path)!)
   );
   request.files.add(multipartFile);
 
@@ -130,8 +131,6 @@ class _MyAppState extends State<MyApp> {
 
   final response = await request.send();
   respBody = await response.stream.bytesToString();
-  print(respBody);
-  print("\n\n");
     }
 
     try {
