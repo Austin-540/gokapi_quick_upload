@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   receive_sharing_intent: ^1.8.1
   flutter_secure_storage: ^10.0.0
+  http: ^1.6.0
+  http_parser: ^4.1.2
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:
