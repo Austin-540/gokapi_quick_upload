@@ -1,7 +1,7 @@
 name: gokapi_quick_upload
 description: "Quick Upload to gokapi from the share sheet"
 publish_to: 'none'
-version: 1.0.1
+version: 1.0.2
 
 environment:
   sdk: ^3.10.7
