@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async';
 import 'dart:io';
@@ -23,33 +24,33 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late StreamSubscription _intentSub;
-  final _sharedFiles = <SharedMediaFile>[];
+  SharedMediaFile? _sharedFile;
 
   @override
   void initState() {
     super.initState();
 
-    // Listen to media sharing coming from outside the app while the app is in the memory.
     _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen((value) {
       setState(() {
-        _sharedFiles.clear();
-        _sharedFiles.addAll(value);
+        _sharedFile = value.last;
       });
     }, onError: (err) {});
 
-    // Get the media sharing coming from outside the app while the app is closed.
     ReceiveSharingIntent.instance.getInitialMedia().then((value) {
-      setState(() {
-        _sharedFiles.clear();
-        _sharedFiles.addAll(value);
+      if (value.isNotEmpty) {
+        setState(() {
+        _sharedFile = value.last;
 
-        // Tell the library that we are done processing the intent.
         ReceiveSharingIntent.instance.reset();
-      });
-    });
+          });
+  }
+  });
+      
+
+      
 
     getSetupData();
-  }
+    }
 
   String? apiKey;
   String? gokapiUrl;
@@ -68,11 +69,12 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
-    if (_sharedFiles.isEmpty) {
-      fileUploadStatus = uploadFiles([]);
+    if (_sharedFile == null) {
+      fileUploadStatus = Future.value("");
       return "empty";
+      
     }
-    fileUploadStatus = uploadFiles([File(_sharedFiles.last.path)]);
+    fileUploadStatus = uploadFiles([File(_sharedFile!.path)]);
   }
 
   void editSavedData(String key) {
@@ -139,19 +141,24 @@ class _MyAppState extends State<MyApp> {
 
       request.fields['allowedDownloads'] = "0";
       request.fields['expiryDays'] = "0";
-      request.headers['apikey'] =
-          apiKey!; //This function will run after the check
+      request.headers['apikey'] = apiKey!; //This function will run after the check
 
       final response = await request.send();
       respBody = await response.stream.bytesToString();
     }
 
     try {
-      SharePlus.instance.share(
+      var shareResult = await SharePlus.instance.share(
         ShareParams(
           uri: Uri.parse(jsonDecode(respBody!)["FileInfo"]["UrlHotlink"]),
         ),
       );
+
+      if (shareResult.status == ShareResultStatus.success) {
+        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+      }
+
+
     } catch (e) {
       if (!mounted) return;
       showDialog(
@@ -200,29 +207,28 @@ class _MyAppState extends State<MyApp> {
               onPressed: () => editSavedData("api_key"),
               child: Text("API Key: ${apiKey.toString()}"),
             ),
-            FutureBuilder(
-              future: fileUploadStatus,
-              builder: (BuildContext context, AsyncSnapshot snapshot) {
-                if (snapshot.hasData) {
-                  return Column(
-                    children: [
-                      Text(snapshot.data.toString()),
-                      OutlinedButton(
-                        onPressed: () => selectNewFile(),
-                        child: Text("Select a new file"),
-                      ),
-                    ],
-                  );
-                } else if (snapshot.hasError) {
-                  return Text(snapshot.error.toString());
-                } else {
-                  return CircularProgressIndicator();
-                }
-              },
-            ),
+            FutureBuilder(future: fileUploadStatus, builder: fileUploadBuilder),
           ],
         ),
       ),
     );
+  }
+
+  Widget fileUploadBuilder(BuildContext context, AsyncSnapshot snapshot) {
+    if (snapshot.hasData) {
+      return Column(
+        children: [
+          Text(snapshot.data.toString()),
+          OutlinedButton(
+            onPressed: () => selectNewFile(),
+            child: Text("Select a file"),
+          ),
+        ],
+      );
+    } else if (snapshot.hasError) {
+      return Text(snapshot.error.toString());
+    } else {
+      return CircularProgressIndicator();
+    }
   }
 }
