@@ -120,7 +120,7 @@ class _MyAppState extends State<MyApp> {
                   });
                 }
                 FlutterSecureStorage storage = FlutterSecureStorage();
-                await storage.write(key: key, value: newValue);
+                await storage.write(key: key, value: gokapiUrl);
 
                 if (!context.mounted) return;
                 Navigator.pop(context);
@@ -138,7 +138,14 @@ class _MyAppState extends State<MyApp> {
 
     String? respBody;
     for (var file in l) {
-      final uri = Uri.parse('$gokapiUrl/api/files/add');
+      var uri;
+      try {
+        uri = Uri.parse('$gokapiUrl/api/files/add');
+      } catch (e) {
+        if (!mounted) return;
+        showDialog(context: context, builder: (context) => AlertDialog(title: Text("Your URL couldn't be parsed :("),));
+        return;
+      }
       final request = http.MultipartRequest('POST', uri);
 
       final stream = http.ByteStream(file.openRead());
