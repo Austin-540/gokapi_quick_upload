@@ -215,7 +215,8 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gokapi Quick Upload')),
+      appBar: AppBar(title: const Text('Gokapi Quick Upload'), actions: [IconButton(onPressed: () => showAppAboutDialog(context), icon: Icon(Icons.info_outline))],),
+      
       body: Center(
         child: Column(
           children: <Widget>[
@@ -233,6 +234,13 @@ class _MyAppState extends State<MyApp> {
       ),
     );
   }
+
+  void showAppAboutDialog(BuildContext context) => showAboutDialog(
+    context: context,
+    applicationName: "Gokapi Quick Upload",
+    applicationIcon: Icon(Icons.cloud_upload_outlined),
+    applicationLegalese: "This app is open source :)\n\nhttps://github.com/Austin-540/gokapi_quick_upload"
+  );
 
   Widget fileUploadBuilder(BuildContext context, AsyncSnapshot snapshot) {
     if (snapshot.hasData) {
