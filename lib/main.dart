@@ -97,9 +97,22 @@ class _MyAppState extends State<MyApp> {
             ),
             ElevatedButton(
               onPressed: () async {
+                if (newValue == null) return;
                 if (key == "url") {
                   setState(() {
                     gokapiUrl = newValue;
+                    if (gokapiUrl!.endsWith("/")) {
+                      gokapiUrl = gokapiUrl!.substring(0, gokapiUrl!.length - 1);
+                    } 
+
+                    if (!gokapiUrl!.startsWith("http")) { //will detect lack of http or https
+                      gokapiUrl = "https://${gokapiUrl!}";
+                    }
+
+                    if (Uri.tryParse(gokapiUrl!) == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid URL")));
+                      return;
+                    }
                   });
                 } else if (key == "api_key") {
                   setState(() {
