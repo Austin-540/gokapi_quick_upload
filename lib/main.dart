@@ -217,20 +217,22 @@ class _MyAppState extends State<MyApp> {
     return Scaffold(
       appBar: AppBar(title: const Text('Gokapi Quick Upload'), actions: [IconButton(onPressed: () => showAppAboutDialog(context), icon: Icon(Icons.info_outline))],),
       
-      body: Center(
-        child: Column(
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: () => editSavedData("url"),
-              child: Text("Gokapi URL: ${gokapiUrl.toString()}"),
-            ),
-            ElevatedButton(
-              onPressed: () => editSavedData("api_key"),
-              child: Text("API Key: ${apiKey.toString()}"),
-            ),
-            FutureBuilder(future: fileUploadStatus, builder: fileUploadBuilder),
-          ],
-        ),
+      body: ListView(
+        children: [Center(
+          child: Column(
+            children: <Widget>[
+              ElevatedButton(
+                onPressed: () => editSavedData("url"),
+                child: Text("Gokapi URL: ${gokapiUrl.toString()}"),
+              ),
+              ElevatedButton(
+                onPressed: () => editSavedData("api_key"),
+                child: Text("API Key: ${apiKey.toString()}"),
+              ),
+              FutureBuilder(future: fileUploadStatus, builder: fileUploadBuilder),
+            ],
+          ),
+        )],
       ),
     );
   }
@@ -246,7 +248,42 @@ class _MyAppState extends State<MyApp> {
     if (snapshot.hasData) {
       return Column(
         children: [
-          Text(snapshot.data.toString()),
+
+Padding(
+  padding: const EdgeInsets.all(8.0),
+  child: Table(
+    border: TableBorder.all(),
+    children: (() {
+      final decoded = jsonDecode(snapshot.data ?? '{}');
+      if (decoded is Map && decoded['FileInfo'] is Map) {
+        return (decoded['FileInfo'] as Map<String, dynamic>)
+            .entries
+            .map((e) => TableRow(children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(e.key),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(e.value?.toString() ?? ''),
+                  ),
+                ]))
+            .toList();
+      } else {
+        return [
+          TableRow(children: [
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text('No FileInfo found'),
+            ),
+            const SizedBox(),
+          ])
+        ];
+      }
+    })(),
+  ),
+),
+          
           OutlinedButton(
             onPressed: () => selectNewFile(),
             child: Text("Select a file"),
